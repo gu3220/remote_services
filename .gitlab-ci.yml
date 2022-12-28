@@ -1,0 +1,60 @@
+stages: 
+    - build1 
+    - build2 
+    - run1 
+    - run2 
+
+
+variables: 
+    MYSQL_ROOT_PASSWORD: root 
+    MYSQL_HOST: mysql 
+  
+
+build-task1: 
+    stage: build1 
+    image: mcr.microsoft.com/dotnet/sdk:7.0 
+    script: 
+        - dotnet build task1/task1.csproj 
+    artifacts: 
+        paths: 
+            - task1/bin/Debug/net6.0/* 
+
+run-task1: 
+    stage: run1 
+    image: mcr.microsoft.com/dotnet/runtime:6.0 
+    dependencies: 
+        - build-task1 
+    script: 
+        - dotnet task1/bin/Debug/net6.0/task1.dll $ARG_FOR_TASK_1 > result.txt 
+    artifacts: 
+        paths: 
+            - result.txt 
+
+  
+
+build-task2: 
+    stage: build2 
+    image: mcr.microsoft.com/dotnet/sdk:7.0 
+    script: 
+        - dotnet build task2/task2.csproj 
+    artifacts:
+        paths: 
+            - task2/bin/Debug/net6.0/* 
+  
+run-task2: 
+    stage: run2 
+    image: mcr.microsoft.com/dotnet/runtime:6.0 
+    dependencies: 
+        - build-task2 
+    services: 
+    - mysql:5.7 
+    before_script: 
+        - apt-get update && apt-get install -y git curl libmcrypt-dev default-mysql-client 
+        - mysql -u root -p"$MYSQL_ROOT_PASSWORD" -h "${MYSQL_HOST} < task2/init.sql 
+        - mysql -u root -p"$MYSQL_ROOT_PASSWORD" -h "${MYSQL_HOST} -e "SELECT * FROM task2.Students" 
+        - mysql -u root -p"$MYSQL_ROOT_PASSWORD" -h "${MYSQL_HOST} -e "SELECT * FROM task2.Record_books" 
+    script: 
+        - dotnet task2/bin/Debug/net6.0/task2.dll > task2_result.txt 
+    artifacts: 
+        paths: 
+            - task2_result.txt 
